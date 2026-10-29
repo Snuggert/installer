@@ -96,7 +96,7 @@ watchdog () {
         else
             # Connection is not established. Check if the server host is reachable before blaming astro_mod
             server_target="${SERVER_IP:-vacuula.local}"
-            if [ -n "${server_target}" ] && ping -c 1 -w 2 "${server_target}" >/dev/null 2>&1; then
+            if [ -n "${server_target}" ] && openssl s_client -connect "${server_target}:${GEN3_PORT}" </dev/null >/dev/null 2>&1; then
                 count=0
                 if [ -f /tmp/vacuula_unconnected_count ]; then
                     count=$(cat /tmp/vacuula_unconnected_count 2>/dev/null || echo 0)
