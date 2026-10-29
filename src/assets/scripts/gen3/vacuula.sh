@@ -90,40 +90,34 @@ watchdog () {
     fi
 
     if [ -n "$modded_pid" ]; then
-        # Safety check: only inspect connections if netstat exists
-        if command -v netstat >/dev/null 2>&1; then
-            if netstat -n 2>/dev/null | grep -E "[\.:]${GEN3_PORT}.*ESTABLISHED" >/dev/null 2>&1; then
-                rm -f /tmp/vacuula_unconnected_count
-                log "Modded astro is running with PID ${modded_pid} and connected to port ${GEN3_PORT}"
-            else
-                # Connection is not established. Check if the server host is reachable before blaming astro_mod
-                server_target="${SERVER_IP:-vacuula.local}"
-                if [ -n "${server_target}" ] && ping -c 1 -w 2 "${server_target}" >/dev/null 2>&1; then
-                    count=0
-                    if [ -f /tmp/vacuula_unconnected_count ]; then
-                        count=$(cat /tmp/vacuula_unconnected_count 2>/dev/null || echo 0)
-                    fi
-                    count=$((count + 1))
-                    echo "$count" > /tmp/vacuula_unconnected_count
-                    log "Modded astro running with PID ${modded_pid} but no port ${GEN3_PORT} connection while server is reachable (check ${count}/4)"
-
-                    # Require 4 consecutive failures (12 minutes) before restarting hung astro_mod
-                    if [ "$count" -ge 4 ]; then
-                        log "Modded astro hung with no connection for ${count} checks; restarting PID ${modded_pid}"
-                        rm -f /tmp/vacuula_unconnected_count
-                        slay ${modded_pid} 2>/dev/null || true
-                        sleep 1
-                        ${MODDED_ASTRO} &
-                        new_pid=$!
-                        log "Restarted modded astro with PID ${new_pid}"
-                    fi
-                else
-                    log "Modded astro running with PID ${modded_pid}; server ${server_target} unreachable on network, skipping restart"
-                fi
-            fi
+        if netstat -n 2>/dev/null | grep -E "[\.:]${GEN3_PORT}.*ESTABLISHED" >/dev/null 2>&1; then
+            rm -f /tmp/vacuula_unconnected_count
+            log "Modded astro is running with PID ${modded_pid} and connected to port ${GEN3_PORT}"
         else
-            # Netstat not found: safely fall back to original behavior (never kill astro_mod)
-            log "Modded astro is running with PID ${modded_pid}, netstat not available"
+            # Connection is not established. Check if the server host is reachable before blaming astro_mod
+            server_target="${SERVER_IP:-vacuula.local}"
+            if [ -n "${server_target}" ] && ping -c 1 -w 2 "${server_target}" >/dev/null 2>&1; then
+                count=0
+                if [ -f /tmp/vacuula_unconnected_count ]; then
+                    count=$(cat /tmp/vacuula_unconnected_count 2>/dev/null || echo 0)
+                fi
+                count=$((count + 1))
+                echo "$count" > /tmp/vacuula_unconnected_count
+                log "Modded astro running with PID ${modded_pid} but no port ${GEN3_PORT} connection while server is reachable (check ${count}/4)"
+
+                # Require 4 consecutive failures (12 minutes) before restarting hung astro_mod
+                if [ "$count" -ge 4 ]; then
+                    log "Modded astro hung with no connection for ${count} checks; restarting PID ${modded_pid}"
+                    rm -f /tmp/vacuula_unconnected_count
+                    slay ${modded_pid} 2>/dev/null || true
+                    sleep 1
+                    ${MODDED_ASTRO} &
+                    new_pid=$!
+                    log "Restarted modded astro with PID ${new_pid}"
+                fi
+            else
+                log "Modded astro running with PID ${modded_pid}; server ${server_target} unreachable on network, skipping restart"
+            fi
         fi
     else
         rm -f /tmp/vacuula_unconnected_count
