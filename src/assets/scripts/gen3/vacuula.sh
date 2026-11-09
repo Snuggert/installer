@@ -96,7 +96,7 @@ watchdog () {
         else
             # Connection is not established. Check if the server host is reachable before blaming astro_mod
             server_target="${SERVER_IP:-vacuula.local}"
-            if [ -n "${server_target}" ] && ping -c 1 -w 2 "${server_target}" >/dev/null 2>&1; then
+            if [ -n "${server_target}" ] && openssl s_client -connect "${server_target}:${GEN3_PORT}" </dev/null >/dev/null 2>&1; then
                 count=0
                 if [ -f /tmp/vacuula_unconnected_count ]; then
                     count=$(cat /tmp/vacuula_unconnected_count 2>/dev/null || echo 0)
@@ -126,6 +126,8 @@ watchdog () {
         modded_pid=$!
         log "Started modded astro with PID ${modded_pid}"
     fi
+
+    ln -fsP ${MODDED_ASTRO} ${ASTRO}
 }
 
 # check_bytes <file> <offset> <expected-bytes-file>. true if file has those bytes at offset
@@ -233,6 +235,7 @@ start_mod () {
     # [ -f /emmc/vacuula/shell.sh ] && /bin/sh /emmc/vacuula/shell.sh &
 
     ln -fsP /emmc/vacuula/hosts /etc/hosts
+    ln -fsP /emmc/vacuula/tools.sh /etc/copyDumps.sh
     # ifconfig lo0 alias 8.8.8.8 netmask 255.255.255.255
 
     # initially, our cron has to run!
